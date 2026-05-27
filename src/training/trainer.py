@@ -95,7 +95,7 @@ def train_model(model, train_loader, val_loader, model_name="model",
 
     sep = "=" * 50
     print(f"\n{sep}")
-    print(f"Training: {model_name}  |  device: {device}  |  epochs: {num_epochs}")
+    print(f"Training: {model_name}  device: {device}  epochs: {num_epochs}")
     print(sep)
 
     for epoch in range(1, num_epochs + 1):
@@ -137,8 +137,8 @@ def train_model(model, train_loader, val_loader, model_name="model",
     return history
 
 
-# keep these for direct use in notebooks
-def train_epoch_rnn(model, loader, optimizer, criterion, device, clip_grad=1.0):
+def train_epoch_rnn(model, loader, optimizer, criterion,
+                    device, clip_grad=1.0):
     return _train_epoch(model, loader, optimizer, criterion, device,
                         clip_grad, is_transformer=False)
 

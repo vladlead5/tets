@@ -87,7 +87,6 @@ class GPTModel(nn.Module):
         self.ln_final = nn.LayerNorm(embed_dim)
         self.lm_head = nn.Linear(embed_dim, vocab_size, bias=False)
 
-        # weight tying
         self.lm_head.weight = self.token_emb.weight
 
         self._init_weights()

@@ -94,10 +94,8 @@ class WordTokenizer:
 
     @property
     def pad_id(self):
-        """Index of <PAD> token."""
         return self.word2idx[self.PAD]
 
     @property
     def unk_id(self):
-        """Index of <UNK> token."""
         return self.word2idx[self.UNK]

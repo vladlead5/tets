@@ -3,18 +3,6 @@ import torch.nn as nn
 
 
 class BiLSTMModel(nn.Module):
-    """
-    Bidirectional LSTM for language modeling.
-
-    The LM head uses only the forward-direction output to avoid
-    data leakage: the backward direction sees future tokens,
-    so using it for next-token prediction would be cheating.
-
-    Note: multi-layer BiLSTM still has indirect leakage because
-    layer 2's forward LSTM receives layer 1's backward output.
-    Use num_layers=1 for a strictly causal model.
-    """
-
     def __init__(self, vocab_size, embed_dim=128, hidden_size=256,
                  num_layers=1, dropout=0.3):
         super().__init__()
@@ -29,7 +17,6 @@ class BiLSTMModel(nn.Module):
             dropout=dropout if num_layers > 1 else 0.0,
         )
         self.dropout = nn.Dropout(dropout)
-        # only forward half of the output (first hidden_size dims)
         self.fc = nn.Linear(hidden_size, vocab_size)
 
     def forward(self, x, hidden=None):
@@ -48,6 +35,5 @@ class BiLSTMModel(nn.Module):
         return h, c
 
     def get_forward_hidden(self, hidden):
-        """Extract only forward-direction hidden states for generation."""
         h, c = hidden
         return h[0::2], c[0::2]

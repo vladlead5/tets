@@ -51,10 +51,8 @@ class BPETokenizer:
         return self
 
     def get_vocab(self):
-        """Return vocabulary dict {token: id}."""
         return self.tokenizer.get_vocab()
 
     def show_sample_tokens(self, text, n=50):
-        """Return first n (token, id) pairs for a sample text."""
         encoding = self.tokenizer.encode(text[:500])
         return list(zip(encoding.tokens[:n], encoding.ids[:n]))
