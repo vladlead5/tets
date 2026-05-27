@@ -18,8 +18,6 @@ import math
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from tqdm import tqdm
-
 from src.utils.utils import save_checkpoint
 from src.evaluation.metrics import compute_perplexity
 
@@ -54,6 +52,8 @@ def train_epoch_rnn(model, loader, optimizer, criterion, device, clip_grad=1.0, 
         total_loss += loss.item() * B * T
         total_tokens += B * T
 
+    if total_tokens == 0:
+        return float("inf")
     return total_loss / total_tokens
 
 
@@ -72,6 +72,8 @@ def eval_epoch_rnn(model, loader, criterion, device):
             total_loss += loss.item() * B * T
             total_tokens += B * T
 
+    if total_tokens == 0:
+        return float("inf")
     return total_loss / total_tokens
 
 
@@ -105,6 +107,8 @@ def train_epoch_transformer(model, loader, optimizer, criterion, device, clip_gr
         total_loss += loss.item() * B * T
         total_tokens += B * T
 
+    if total_tokens == 0:
+        return float("inf")
     return total_loss / total_tokens
 
 
@@ -123,6 +127,8 @@ def eval_epoch_transformer(model, loader, criterion, device):
             total_loss += loss.item() * B * T
             total_tokens += B * T
 
+    if total_tokens == 0:
+        return float("inf")
     return total_loss / total_tokens
 
 

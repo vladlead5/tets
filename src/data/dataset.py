@@ -88,7 +88,8 @@ class CharTextDataset(Dataset):
         self.seq_len = seq_len
 
     def __len__(self):
-        return len(self.data) - self.seq_len
+        # max(0, ...) защита от случая когда текст короче seq_len
+        return max(0, len(self.data) - self.seq_len)
 
     def __getitem__(self, idx):
         x = self.data[idx: idx + self.seq_len]
@@ -107,7 +108,7 @@ class TokenTextDataset(Dataset):
         self.seq_len = seq_len
 
     def __len__(self):
-        return len(self.data) - self.seq_len
+        return max(0, len(self.data) - self.seq_len)
 
     def __getitem__(self, idx):
         x = self.data[idx: idx + self.seq_len]

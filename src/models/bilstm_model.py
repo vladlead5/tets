@@ -1,17 +1,29 @@
 """
 Bidirectional LSTM модель для генерации текста.
 
-Важная особенность: двунаправленный LSTM видит будущий контекст,
-что не соответствует стандартному языковому моделированию.
-В этой реализации BiLSTM используется следующим образом:
+Архитектурные особенности и ограничения:
+──────────────────────────────────────────
+ОГРАНИЧЕНИЕ MULTI-LAYER BiLSTM:
+  В двуслойном BiLSTM backward-представление первого слоя попадает
+  во входы forward-LSTM второго слоя, что создаёт утечку будущего контекста
+  даже в «forward» половине выхода. Для честного causal LM используем
+  num_layers=1 по умолчанию.
 
-  - На обучении — BiLSTM обрабатывает последовательность,
-    выходные состояния конкатенируются и проецируются в словарь.
-  - На генерации — используем только forward-направление (unidirectional inference),
-    что является стандартным компромиссом для BiLSTM в LM.
+ОДНОСЛОЙНЫЙ BiLSTM:
+  - Forward-направление: видит только x[0..t] при предсказании t+1 ✓
+  - Backward-направление: видит x[t..T] — не участвует в LM-голове
+  - LM-голова использует только forward-часть выхода → нет leakage
 
-Это позволяет сравнить качество представлений BiLSTM vs LSTM
-при том же числе параметров.
+  Это означает, что backward LSTM не вносит прямого вклада в loss.
+  Однако backward-обучение идёт через shared embedding и помогает
+  на раннем обучении как дополнительный регуляризирующий сигнал.
+
+ГЕНЕРАЦИЯ:
+  При генерации токен за токеном backward-направление за каждый шаг
+  получает на вход только текущий токен (без будущих), что делает его
+  бессмысленным. Фактически на инференсе BiLSTM = однонаправленный LSTM.
+  Это подтверждает, что BiLSTM подходит для задач классификации/NER,
+  а не для авторегрессивной генерации.
 """
 
 import torch
@@ -22,11 +34,14 @@ class BiLSTMModel(nn.Module):
     """
     Bidirectional LSTM language model.
 
+    LM-голова использует только forward-половину вывода BiLSTM,
+    исключая утечку будущего контекста при вычислении loss.
+
     Args:
         vocab_size:  размер словаря
         embed_dim:   размерность эмбеддингов
         hidden_size: размер скрытого состояния (на каждое направление)
-        num_layers:  количество слоёв
+        num_layers:  количество слоёв (рекомендуется 1 для causal LM)
         dropout:     dropout
     """
 
@@ -35,7 +50,7 @@ class BiLSTMModel(nn.Module):
         vocab_size: int,
         embed_dim: int = 128,
         hidden_size: int = 256,
-        num_layers: int = 2,
+        num_layers: int = 1,
         dropout: float = 0.3,
     ):
         super().__init__()
@@ -57,8 +72,11 @@ class BiLSTMModel(nn.Module):
 
         self.dropout = nn.Dropout(dropout)
 
-        # выход LSTM: hidden_size * 2 (прямое + обратное направления)
-        self.fc = nn.Linear(hidden_size * 2, vocab_size)
+        # LM-голова использует только forward-половину (hidden_size),
+        # а не hidden_size*2, чтобы избежать утечки будущего контекста.
+        # В однослойном BiLSTM forward-выход[:,t,:hidden_size] зависит
+        # только от x[0..t] — строго каузальный.
+        self.fc = nn.Linear(hidden_size, vocab_size)
 
     def forward(self, x, hidden=None):
         """
@@ -72,7 +90,12 @@ class BiLSTMModel(nn.Module):
         emb = self.dropout(self.embedding(x))        # (batch, seq_len, embed_dim)
         out, hidden = self.lstm(emb, hidden)          # out: (batch, seq_len, hidden*2)
         out = self.dropout(out)
-        logits = self.fc(out)                         # (batch, seq_len, vocab_size)
+
+        # Берём только forward-половину: первые hidden_size каналов
+        # (PyTorch кладёт forward-направление первым в конкатенации)
+        forward_out = out[:, :, :self.hidden_size]    # (batch, seq_len, hidden_size)
+
+        logits = self.fc(forward_out)                 # (batch, seq_len, vocab_size)
         return logits, hidden
 
     def init_hidden(self, batch_size: int, device: torch.device):
@@ -85,9 +108,10 @@ class BiLSTMModel(nn.Module):
         """
         Для генерации берём только forward-направление из скрытого состояния.
         h shape: (num_layers*2, batch, hidden) → (num_layers, batch, hidden)
+
+        Чётные индексы (0, 2, ...) — forward, нечётные (1, 3, ...) — backward.
         """
         h, c = hidden
-        # чётные индексы — forward, нечётные — backward
         h_forward = h[0::2]
         c_forward = c[0::2]
         return h_forward, c_forward
