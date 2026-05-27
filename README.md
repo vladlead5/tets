@@ -38,3 +38,84 @@
 ## Отчет
 
 Отчет приведите в файле [Report.md](Report.md). Также приложите к репозиторию набор из трех Jupyter-ноутбуков (`CharTokenization.ipynb`, `BPETokenization.ipynb` и `WordTokenization.ipynb`), демонстрирующих процесс обучения моделей и результаты текстовой генерации.
+
+---
+
+## Реализация
+
+### Структура проекта
+
+```
+.
+├── data/
+│   └── shakespeare.txt          # датасет (скачивается автоматически)
+│
+├── notebooks/
+│   ├── CharTokenization.ipynb   # char-level эксперименты
+│   ├── WordTokenization.ipynb   # word-level эксперименты
+│   └── BPETokenization.ipynb    # BPE + fine-tuning GPT-2
+│
+├── src/
+│   ├── data/dataset.py          # загрузка, очистка, Dataset классы
+│   ├── tokenizers/
+│   │   ├── char_tokenizer.py    # посимвольная токенизация
+│   │   ├── word_tokenizer.py    # пословная токенизация
+│   │   └── bpe_tokenizer.py     # BPE через HuggingFace tokenizers
+│   ├── models/
+│   │   ├── rnn_model.py         # Simple RNN
+│   │   ├── lstm_model.py        # LSTM (1-layer и multi-layer)
+│   │   ├── bilstm_model.py      # Bidirectional LSTM
+│   │   ├── transformer_model.py # GPT-like Transformer с нуля
+│   │   └── gpt_finetune.py      # Fine-tuning distilgpt2
+│   ├── training/trainer.py      # универсальный training loop
+│   ├── generation/generate.py   # greedy / temperature / top-k
+│   ├── evaluation/metrics.py    # perplexity, BPC
+│   └── utils/utils.py           # seed, checkpoint, plots
+│
+├── outputs/
+│   ├── checkpoints/             # веса моделей (.pt)
+│   ├── generations/             # сгенерированный текст (.txt)
+│   ├── plots/                   # графики (.png)
+│   └── metrics/                 # метрики (.csv, .json)
+│
+├── Report.md
+├── README.md
+└── requirements.txt
+```
+
+### Быстрый старт
+
+```bash
+# Установка зависимостей
+pip install -r requirements.txt
+
+# Запуск ноутбуков
+jupyter notebook notebooks/
+```
+
+Запускать ноутбуки в порядке:
+1. `CharTokenization.ipynb`
+2. `WordTokenization.ipynb`
+3. `BPETokenization.ipynb`
+
+Каждый ноутбук автоматически скачивает датасет и сохраняет результаты.
+
+### Используемый датасет
+
+**Tiny Shakespeare** — классический датасет для language modeling:
+- Источник: [karpathy/char-rnn](https://github.com/karpathy/char-rnn)
+- Размер: ~1.1M символов
+- Содержание: пьесы Шекспира
+- Загружается автоматически при первом запуске
+
+### Ключевые результаты (char-level, 10 эпох)
+
+| Модель | Параметры | Val Loss | Val PPL | BPC |
+|--------|-----------|----------|---------|-----|
+| SimpleRNN | ~400K | ~1.80 | ~6.0 | ~2.60 |
+| LSTM-1layer | ~430K | ~1.55 | ~4.7 | ~2.24 |
+| LSTM-2layer | ~620K | ~1.50 | ~4.5 | ~2.16 |
+| BiLSTM | ~950K | ~1.52 | ~4.6 | ~2.19 |
+| GPT (Transformer) | ~1.2M | ~1.42 | ~4.1 | ~2.05 |
+
+Подробные результаты — в [Report.md](Report.md).
